@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Panel</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+      }
+      button {
+        padding: 10px;
+        margin: 5px;
+      }
+      .question {
+        margin: 20px 0;
+      }
+      .answers {
+        margin-top: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Quiz Controls</h2>
+    <button id="startQuiz">Start Quiz</button>
+    <button id="prevQuestion" disabled>Previous</button>
+    <button id="nextQuestion" disabled>Next</button>
+
+    <h3>Current Question</h3>
+    <div id="currentQuestion">No question selected.</div>
+
+    <input type="file" id="fileInput" accept=".xls,.xlsx" />
+    <button id="uploadFile">Upload Questions</button>
+
+    <h2>Registered Teams</h2>
+    <ul id="teamsList">
+      No teams yet.
+    </ul>
+
+    <h2>Imported Questions</h2>
+    <table id="questionsTable" border="1">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Type</th>
+          <th>Question</th>
+          <th>Options</th>
+          <th>Correct Answers</th>
+          <th>Media</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <h2>Submitted Answers</h2>
+    <ul id="answersList">
+      No answers yet.
+    </ul>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+      const socket = io();
+
+      const startQuizButton = document.getElementById("startQuiz");
+      const nextQuestionButton = document.getElementById("nextQuestion");
+      const endQuizButton = document.getElementById("endQuiz");
+      const teamAnswersDiv = document.getElementById("teamAnswers");
+      const currentQuestionDiv = document.getElementById("currentQuestion");
+
+      let currentTeamAnswers = {};
+
+      startQuizButton.addEventListener("click", () => {
+        socket.emit("startQuiz");
+      });
+
+      document.getElementById("prevQuestion").addEventListener("click", () => {
+        socket.emit("prevQuestion");
+      });
+
+      nextQuestionButton.addEventListener("click", () => {
+        socket.emit("nextQuestion");
+      });
+
+      socket.on("currentQuestion", (question) => {
+        const questionDiv = document.getElementById("currentQuestion");
+        if (!question) {
+          questionDiv.innerHTML = "No question selected.";
+          return;
+        }
+
+        questionDiv.innerHTML = `
+        <p><strong>${question.questionText}</strong></p>
+        <p>Type: ${question.type}</p>
+        <p>Options: ${
+          question.options.length ? question.options.join(", ") : "—"
+        }</p>
+        <p>Media: ${
+          question.mediaURL
+            ? `<a href="${question.mediaURL}" target="_blank">View</a>`
+            : "—"
+        }</p>
+    `;
+
+        // Enable or disable navigation buttons
+        document.getElementById("prevQuestion").disabled = question.index === 0;
+        nextQuestionButton.disabled = question.index === questions.length - 1;
+      });
+
+      // Listen for quiz start
+      socket.on("quizStarted", () => {
+        currentTeamAnswers = {};
+        teamAnswersDiv.innerHTML = "";
+        alert("The quiz has started!");
+      });
+
+      // Listen for question change
+      socket.on("questionChanged", (question) => {
+        currentQuestionDiv.innerHTML = `<p><strong>Question:</strong> ${question.question}</p>`;
+        const options = question.options.map((opt) => `<p>${opt}</p>`).join("");
+        currentQuestionDiv.innerHTML += `<div><strong>Options:</strong> ${options}</div>`;
+      });
+
+      // Listen for updated answers
+      socket.on("answerUpdated", (answers) => {
+        teamAnswersDiv.innerHTML = `<h3>Team Answers</h3>`;
+        for (const teamId in answers) {
+          teamAnswersDiv.innerHTML += `<p>Team ${teamId}: ${answers[teamId]}</p>
+          <button onclick="editAnswer('${teamId}')">Edit</button>`;
+        }
+      });
+
+      socket.on("answersUpdated", (answers) => {
+        const answersList = document.getElementById("answersList");
+        answersList.innerHTML = "";
+
+        if (answers.length === 0) {
+          answersList.innerHTML = "<li>No answers yet.</li>";
+          return;
+        }
+
+        answers.forEach(({ teamName, answer }) => {
+          const li = document.createElement("li");
+          li.innerHTML = `<strong>${teamName}:</strong> ${answer} 
+                <button onclick="correctAnswer('${teamName}', '${answer}')">Mark Correct</button>`;
+          answersList.appendChild(li);
+        });
+      });
+
+      function correctAnswer(teamName, answer) {
+        socket.emit("markCorrect", { teamName, answer });
+      }
+
+      socket.on("answerCorrection", (message) => {
+        alert(message);
+      });
+
+      // Edit answer
+      function editAnswer(teamId) {
+        const newAnswer = prompt(
+          `Edit answer for Team ${teamId}:`,
+          currentTeamAnswers[teamId]
+        );
+        if (newAnswer !== null) {
+          socket.emit("editAnswer", teamId, newAnswer);
+        }
+      }
+
+      // Listen for quiz end
+      socket.on("quizEnded", () => {
+        alert("The quiz has ended!");
+      });
+
+      socket.on("questionsUpdated", (updatedQuestions) => {
+        alert("Questions updated! Refresh the page to see the latest changes.");
+      });
+
+      socket.on("teamsUpdated", (teams) => {
+        const teamsList = document.getElementById("teamsList");
+        teamsList.innerHTML = "";
+
+        if (teams.length === 0) {
+          teamsList.innerHTML = "<li>No teams yet.</li>";
+          return;
+        }
+
+        teams.forEach((team) => {
+          const li = document.createElement("li");
+          li.textContent = team.name;
+          teamsList.appendChild(li);
+        });
+      });
+
+      document.getElementById("uploadFile").addEventListener("click", () => {
+        const fileInput = document.getElementById("fileInput");
+        if (fileInput.files.length === 0) {
+          alert("Please select a file.");
+          return;
+        }
+
+        const formData = new FormData();
+        formData.append("file", fileInput.files[0]);
+
+        fetch("/upload", {
+          method: "POST",
+          body: formData,
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.success) {
+              alert("Questions uploaded successfully!");
+            } else {
+              alert("Upload failed: " + data.error);
+            }
+          })
+          .catch((error) =>
+            console.error("Error:", error.message, error.stack)
+          );
+      });
+
+      function updateQuestionsTable(questions) {
+        const tableBody = document.querySelector("#questionsTable tbody");
+        tableBody.innerHTML = ""; // Clear previous questions
+
+        questions.forEach((q, index) => {
+          const row = document.createElement("tr");
+
+          row.innerHTML = `
+            <td>${index + 1}</td>
+            <td>${q.type}</td>
+            <td>${q.questionText}</td>
+            <td>${q.options.length ? q.options.join(", ") : "—"}</td>
+            <td>${q.correctAnswers.join(", ")}</td>
+            <td>${
+              q.mediaURL
+                ? `<a href="${q.mediaURL}" target="_blank">View</a>`
+                : "—"
+            }</td>
+        `;
+
+          tableBody.appendChild(row);
+        });
+      }
+
+      // Request current questions when admin page loads
+      fetch("/questions")
+        .then((response) => response.json())
+        .then(updateQuestionsTable)
+        .catch((error) => console.error("Failed to load questions:", error));
+
+      // Listen for real-time updates from the server
+      socket.on("questionsUpdated", updateQuestionsTable);
+    </script>
+  </body>
+</html>

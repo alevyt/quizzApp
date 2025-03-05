@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Join Quiz</title>
+    <script src="/socket.io/socket.io.js"></script>
+  </head>
+  <body>
+    <h2>Join Quiz</h2>
+    <input type="text" id="teamName" placeholder="Enter team name" />
+    <button id="joinQuiz">Join</button>
+
+    <h3>Current Question</h3>
+    <div id="currentQuestion">Waiting for quiz to start...</div>
+
+    <h3>Submit Your Answer</h3>
+    <input type="text" id="teamAnswer" placeholder="Enter your answer" />
+    <button id="submitAnswer">Submit</button>
+
+    <p id="answerStatus"></p>
+
+    <script>
+      document.getElementById("submitAnswer").addEventListener("click", () => {
+        if (!teamId) {
+          alert("You must join the quiz first!");
+          return;
+        }
+
+        const answer = document.getElementById("teamAnswer").value.trim();
+        if (!answer) {
+          alert("Please enter an answer.");
+          return;
+        }
+
+        socket.emit("submitAnswer", { teamId, answer });
+        document.getElementById("answerStatus").innerText = "Answer submitted!";
+        document.getElementById("teamAnswer").value = "";
+      });
+
+      socket.on("answerCorrection", (message) => {
+        document.getElementById("answerStatus").innerText = message;
+      });
+    </script>
+
+    <script>
+      const socket = io();
+      let teamId = null;
+
+      document.getElementById("joinQuiz").addEventListener("click", () => {
+        const teamName = document.getElementById("teamName").value.trim();
+        if (!teamName) {
+          alert("Please enter a team name.");
+          return;
+        }
+
+        socket.emit("joinQuiz", teamName, (response) => {
+          if (response.success) {
+            teamId = response.teamId;
+            document.getElementById("teamName").disabled = true;
+            document.getElementById("joinQuiz").disabled = true;
+          } else {
+            alert("Team name already taken. Try another.");
+          }
+        });
+      });
+
+      socket.on("currentQuestion", (question) => {
+        const questionDiv = document.getElementById("currentQuestion");
+        if (!question) {
+          questionDiv.innerHTML = "Waiting for quiz to start...";
+          return;
+        }
+
+        questionDiv.innerHTML = `
+                <p><strong>${question.questionText}</strong></p>
+                <p>Type: ${question.type}</p>
+                <p>Options: ${
+                  question.options.length ? question.options.join(", ") : "—"
+                }</p>
+                <p>Media: ${
+                  question.mediaURL
+                    ? `<a href="${question.mediaURL}" target="_blank">View</a>`
+                    : "—"
+                }</p>
+            `;
+      });
+    </script>
+  </body>
+</html>
