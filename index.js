@@ -12,6 +12,7 @@ const path = require('path');
 
 let currentQuestionIndex = 0;
 let quizStarted = false;
+let quizActive = true;
 let teams = {};
 let answers = {};
 
@@ -60,9 +61,15 @@ io.on('connection', (socket) => {
     });
 
     socket.on("startQuiz", () => {
-        if (questions.length === 0) return;
-        currentQuestionIndex = 0;
-        io.emit("currentQuestion", { ...questions[currentQuestionIndex], index: currentQuestionIndex });
+        if (quizData.length === 0) return;
+        currentQuestion = quizData[0];
+    
+        io.emit("newQuestion", {
+            questionText: currentQuestion.questionText,
+            options: currentQuestion.options || [],
+            mediaType: currentQuestion.mediaType || "none",
+            mediaURL: currentQuestion.mediaURL || ""
+        });
     });
 
     socket.on("prevQuestion", () => {
@@ -114,14 +121,22 @@ io.on('connection', (socket) => {
     socket.on("markCorrect", ({ teamName, answer }) => {
         const team = Object.entries(teams).find(([id, team]) => team.name === teamName);
         if (!team) return;
-    
+
         const teamId = team[0];
         teams[teamId].score += 1; // Increase score
-    
+
         io.emit("answerCorrection", `${teamName}'s answer "${answer}" was marked correct!`);
-        io.emit("teamsUpdated", Object.values(teams)); // Update scores in the admin panel
+        io.emit("teamsUpdated", Object.values(teams)); // Send updated scores
     });
-    
+
+    socket.on("finishQuiz", () => {
+        quizActive = false;
+
+        // Determine winners
+        const sortedTeams = Object.values(teams).sort((a, b) => b.score - a.score);
+        io.emit("quizEnded", sortedTeams); // Send final results to everyone
+    });
+
 });
 
 server.listen(3000, () => {

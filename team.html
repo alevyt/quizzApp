@@ -14,11 +14,25 @@
     <h3>Current Question</h3>
     <div id="currentQuestion">Waiting for quiz to start...</div>
 
+    <h3 id="questionText"></h3>
+    <div id="mediaContainer"></div>
+    <!-- Media will be injected here -->
+
+    <ul id="optionsList"></ul>
+
+    <input type="text" id="teamAnswer" placeholder="Enter your answer" />
+    <button id="submitAnswer">Submit</button>
+
     <h3>Submit Your Answer</h3>
     <input type="text" id="teamAnswer" placeholder="Enter your answer" />
     <button id="submitAnswer">Submit</button>
 
     <p id="answerStatus"></p>
+
+    <h2>Leaderboard</h2>
+    <ul id="teamLeaderboard">
+      No scores yet.
+    </ul>
 
     <script>
       document.getElementById("submitAnswer").addEventListener("click", () => {
@@ -40,6 +54,75 @@
 
       socket.on("answerCorrection", (message) => {
         document.getElementById("answerStatus").innerText = message;
+      });
+
+      socket.on("teamsUpdated", (teams) => {
+        updateTeamLeaderboard(teams);
+      });
+
+      function updateTeamLeaderboard(teams) {
+        const leaderboard = document.getElementById("teamLeaderboard");
+        leaderboard.innerHTML = "";
+
+        if (teams.length === 0) {
+          leaderboard.innerHTML = "<li>No scores yet.</li>";
+          return;
+        }
+
+        teams.sort((a, b) => b.score - a.score);
+        teams.forEach((team) => {
+          const li = document.createElement("li");
+          li.innerHTML = `<strong>${team.name}:</strong> ${team.score} points`;
+          leaderboard.appendChild(li);
+        });
+      }
+
+      socket.on("quizEnded", (winners) => {
+        alert("Quiz has ended!");
+
+        const leaderboard = document.getElementById("teamLeaderboard");
+        leaderboard.innerHTML = "<h3>Final Results</h3>";
+
+        winners.forEach((team) => {
+          const li = document.createElement("li");
+          li.innerHTML = `<strong>${team.name}:</strong> ${team.score} points`;
+          leaderboard.appendChild(li);
+        });
+      });
+
+      socket.on("newQuestion", (question) => {
+        document.getElementById("questionText").innerText =
+          question.questionText;
+        const mediaContainer = document.getElementById("mediaContainer");
+        mediaContainer.innerHTML = ""; // Clear previous media
+
+        if (question.mediaType && question.mediaURL) {
+          let mediaElement;
+          if (question.mediaType === "image") {
+            mediaElement = `<img src="${question.mediaURL}" alt="Question Image" style="max-width: 100%;">`;
+          } else if (question.mediaType === "video") {
+            mediaElement = `<video controls style="max-width: 100%;">
+                                    <source src="${question.mediaURL}" type="video/mp4">
+                                    Your browser does not support the video tag.
+                                </video>`;
+          } else if (question.mediaType === "audio") {
+            mediaElement = `<audio controls>
+                                    <source src="${question.mediaURL}" type="audio/mp3">
+                                    Your browser does not support the audio tag.
+                                </audio>`;
+          }
+          mediaContainer.innerHTML = mediaElement;
+        }
+
+        const optionsList = document.getElementById("optionsList");
+        optionsList.innerHTML = "";
+        if (question.options && question.options.length > 0) {
+          question.options.forEach((option) => {
+            const li = document.createElement("li");
+            li.innerText = option;
+            optionsList.appendChild(li);
+          });
+        }
       });
     </script>
 

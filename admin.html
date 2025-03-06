@@ -26,6 +26,7 @@
     <button id="startQuiz">Start Quiz</button>
     <button id="prevQuestion" disabled>Previous</button>
     <button id="nextQuestion" disabled>Next</button>
+    <button id="finishQuiz">Finish Quiz</button>
 
     <h3>Current Question</h3>
     <div id="currentQuestion">No question selected.</div>
@@ -56,6 +57,11 @@
     <h2>Submitted Answers</h2>
     <ul id="answersList">
       No answers yet.
+    </ul>
+
+    <h2>Leaderboard</h2>
+    <ul id="leaderboard">
+      No scores yet.
     </ul>
 
     <script src="/socket.io/socket.io.js"></script>
@@ -176,18 +182,42 @@
       });
 
       socket.on("teamsUpdated", (teams) => {
-        const teamsList = document.getElementById("teamsList");
-        teamsList.innerHTML = "";
+        updateTeamsList(teams);
+        updateLeaderboard(teams);
+      });
+
+      function updateLeaderboard(teams) {
+        const leaderboard = document.getElementById("leaderboard");
+        leaderboard.innerHTML = "";
 
         if (teams.length === 0) {
-          teamsList.innerHTML = "<li>No teams yet.</li>";
+          leaderboard.innerHTML = "<li>No scores yet.</li>";
           return;
         }
 
+        teams.sort((a, b) => b.score - a.score); // Sort teams by score
         teams.forEach((team) => {
           const li = document.createElement("li");
-          li.textContent = team.name;
-          teamsList.appendChild(li);
+          li.innerHTML = `<strong>${team.name}:</strong> ${team.score} points`;
+          leaderboard.appendChild(li);
+        });
+      }
+
+      document.getElementById("finishQuiz").addEventListener("click", () => {
+        socket.emit("finishQuiz");
+      });
+
+      socket.on("quizEnded", (winners) => {
+        alert("Quiz has ended!");
+        document.getElementById("finishQuiz").disabled = true;
+
+        const leaderboard = document.getElementById("leaderboard");
+        leaderboard.innerHTML = "<h3>Final Results</h3>";
+
+        winners.forEach((team) => {
+          const li = document.createElement("li");
+          li.innerHTML = `<strong>${team.name}:</strong> ${team.score} points`;
+          leaderboard.appendChild(li);
         });
       });
 
