@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz Admin Panel</title>
+    
+</head>
+<body>
+    <h1>Quiz Admin Panel</h1>
+
+    <input type="file" id="fileInput" />
+    <button id="uploadFile">Upload Questions</button>
+    <button id="startQuiz" disabled>Start Quiz</button>
+    <button id="nextQuestion" disabled>Next Question</button>
+    <button id="endQuiz" disabled>End Quiz</button>
+
+    <h2>Current Question:</h2>
+    <p id="currentQuestion">No question yet.</p>
+
+    <h2>Team Responses:</h2>
+    <ul id="teamResponses"></ul>
+
+    <h2>Scores:</h2>
+    <ul id="teamScores"></ul>
+
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script defer src="admin.js"></script>
+</body>
+</html>
