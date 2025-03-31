@@ -61,14 +61,6 @@ socket.on("newQuestion", (question) => {
     }
 });
 
-// Update Score
-socket.on("scoreUpdated", (teams) => {
-    const team = teams.find(t => t.teamName === teamName);
-    if (team) {
-        document.getElementById("teamScore").innerText = team.score;
-    }
-});
-
 socket.on("quizState", (quizState) => {
     console.log("📢 Received quiz state:", quizState);
 

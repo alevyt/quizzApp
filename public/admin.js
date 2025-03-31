@@ -1,4 +1,9 @@
+// import { nextTick } from "process";
+
 const socket = io();
+startQuizButton = document.getElementById("startQuiz");
+nextQuestionButton = document.getElementById("nextQuestion");
+endQuizButton = document.getElementById("endQuiz");
 
 // Upload Excel File
 document.getElementById("uploadFile").addEventListener("click", async () => {
@@ -17,8 +22,9 @@ document.getElementById("uploadFile").addEventListener("click", async () => {
 
     try {
         console.log(formData); // Debug log
+        console.log("📂 File ready to be uploaded:", fileInput.files[0].name); // Debug log
+
         const response = await fetch("/upload", {
-            console.log("📂 File ready to be uploaded:", fileInput.files[0].name); // Debug log
             method: "POST",
             body: formData
         });
@@ -27,6 +33,10 @@ document.getElementById("uploadFile").addEventListener("click", async () => {
 
         const result = await response.json();
         console.log("✅ Server response:", result);
+        if(result.success) {
+            alert("Questions uploaded successfully");
+            startQuizButton.disabled = false;
+        }
         // document.getElementById("uploadStatus").innerText = result.message;
     } catch (error) {
         console.error("❌ Upload failed:", error);
@@ -45,10 +55,13 @@ socket.on("quizState", (quizState) => {
 });
 
 // Start Quiz
-document.getElementById("startQuiz").addEventListener("click", () => {
+startQuizButton.addEventListener("click", () => {
     socket.emit("startQuiz", (response) => {
         alert(response.success ? "Quiz started!" : "Failed to start quiz.");
     });
+    nextQuestionButton.disabled = false;
+    endQuizButton.disabled = false;
+    
 });
 
 // Move to Next Question

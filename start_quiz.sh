@@ -19,7 +19,7 @@ PORT=3000
 
 # Start the server
 echo "🚀 Starting the quiz server..."
-node index.js &  # Run server in the background
+node server/index.js &  # Run server in the background
 sleep 2  # Wait for the server to start
 
 # Print links
