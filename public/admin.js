@@ -91,12 +91,10 @@ socket.on("newQuestion", (question) => {
 // Listen for team responses
 socket.on("answersUpdated", (responses) => {
     console.log('responses', responses);
-    const responseList = document.getElementById("teamResponses");
+    const responseList = document.getElementById("teamAnswersBody");
     responseList.innerHTML = "";
     responses.forEach(({ teamName, answer }) => {
-        const li = document.createElement("li");
-        li.innerText = `${teamName}: ${answer}`;
-        responseList.appendChild(li);
+        console.log('1', teamName, answer)
     });
 });
 

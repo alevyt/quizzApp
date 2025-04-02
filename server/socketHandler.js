@@ -1,67 +1,69 @@
 const quizController = require("./quizController");
 
 function setupSockets(io) {
-    // io.on("connection", (socket) => {
-    //     console.log("A user connected:", socket.id);
+    /*
+    io.on("connection", (socket) => {
+        console.log("A user connected:", socket.id);
 
-    //     // -------------------- ADMIN EVENTS --------------------
+        // -------------------- ADMIN EVENTS --------------------
 
-    //     // Import questions from .xls file
-    //     socket.on("importQuestions", (fileBuffer, callback) => {
-    //         const result = quizController.importQuestionsFromXLS(fileBuffer);
-    //         io.emit("questionsUpdated", quizController.getCurrentQuestion()); // Broadcast new questions
-    //         callback(result);
-    //     });
+        // Import questions from .xls file
+        socket.on("importQuestions", (fileBuffer, callback) => {
+            const result = quizController.importQuestionsFromXLS(fileBuffer);
+            io.emit("questionsUpdated", quizController.getCurrentQuestion()); // Broadcast new questions
+            callback(result);
+        });
 
-    //     // Start quiz
-    //     socket.on("startQuiz", (callback) => {
-    //         const result = quizController.startQuiz();
-    //         io.emit("quizStarted", result);
-    //         callback(result);
-    //     });
+        // Start quiz
+        socket.on("startQuiz", (callback) => {
+            const result = quizController.startQuiz();
+            io.emit("quizStarted", result);
+            callback(result);
+        });
 
-    //     // Move to next question
-    //     socket.on("nextQuestion", (callback) => {
-    //         const result = quizController.nextQuestion();
-    //         io.emit("newQuestion", result);
-    //         callback(result);
-    //     });
+        // Move to next question
+        socket.on("nextQuestion", (callback) => {
+            const result = quizController.nextQuestion();
+            io.emit("newQuestion", result);
+            callback(result);
+        });
 
-    //     // Mark answer correct manually
-    //     socket.on("markCorrect", (teamName, answer, callback) => {
-    //         const result = quizController.markCorrect(teamName, answer);
-    //         io.emit("scoreUpdated", result.teams);
-    //         callback(result);
-    //     });
+        // Mark answer correct manually
+        socket.on("markCorrect", (teamName, answer, callback) => {
+            const result = quizController.markCorrect(teamName, answer);
+            io.emit("scoreUpdated", result.teams);
+            callback(result);
+        });
 
-    //     // End quiz
-    //     socket.on("endQuiz", (callback) => {
-    //         const finalScores = quizController.endQuiz();
-    //         io.emit("quizEnded", finalScores);
-    //         callback(finalScores);
-    //     });
+        // End quiz
+        socket.on("endQuiz", (callback) => {
+            const finalScores = quizController.endQuiz();
+            io.emit("quizEnded", finalScores);
+            callback(finalScores);
+        });
 
-    //     // -------------------- TEAM EVENTS --------------------
+        // -------------------- TEAM EVENTS --------------------
 
-    //     // Register a team
-    //     socket.on("registerTeam", (teamId, teamName, callback) => {
-    //         const teams = quizController.registerTeam(teamId, teamName);
-    //         io.emit("teamsUpdated", teams);
-    //         callback(teams);
-    //     });
+        // Register a team
+        socket.on("registerTeam", (teamId, teamName, callback) => {
+            const teams = quizController.registerTeam(teamId, teamName);
+            io.emit("teamsUpdated", teams);
+            callback(teams);
+        });
 
-    //     // Submit an answer
-    //     socket.on("submitAnswer", (teamId, answer, callback) => {
-    //         const result = quizController.submitAnswer(teamId, answer);
-    //         io.emit("answersUpdated", result.answers);
-    //         callback(result);
-    //     });
+        // Submit an answer
+        socket.on("submitAnswer", (teamId, answer, callback) => {
+            const result = quizController.submitAnswer(teamId, answer);
+            io.emit("answersUpdated", result.answers);
+            callback(result);
+        });
 
-    //     // Handle disconnection
-    //     socket.on("disconnect", () => {
-    //         console.log("User disconnected:", socket.id);
-    //     });
-    // });
+        // Handle disconnection
+        socket.on("disconnect", () => {
+            console.log("User disconnected:", socket.id);
+        });
+    }); 
+    */
     io.on("connection", (socket) => {
         console.log("A user connected:", socket.id);
     
@@ -103,6 +105,44 @@ function setupSockets(io) {
         socket.on("disconnect", () => {
             console.log("User disconnected:", socket.id);
         });
+        socket.on("joinQuiz", (teamName) => {
+            if (!teams[teamName]) {
+                teams[teamName] = { score: 0, answers: {} };
+                saveSessionData();
+            }
+            socket.emit("quizJoined", { currentQuestionIndex, quizStarted });
+        });
+        
+        socket.on("startQuiz", () => {
+            quizStarted = true;
+            saveSessionData();
+            io.emit("quizStarted");
+        });
+        
+        socket.on("nextQuestion", () => {
+            currentQuestionIndex++;
+            saveSessionData();
+            io.emit("newQuestion", currentQuestionIndex);
+        });
+        
+
+        socket.on("rejoinQuiz", (teamName) => {
+            if (teams[teamName]) {
+                // Send back all necessary data
+                socket.emit("teamRejoined", {
+                    teamName,
+                    score: teams[teamName].score,
+                    currentQuestion: currentQuestionIndex
+                });
+            }
+        });
+
+        socket.on("updateAnswer", ({ teamName, newAnswer }) => {
+            if (activeQuiz.answers[teamName]) {
+                activeQuiz.answers[teamName].push(newAnswer);
+                io.emit("answersUpdated", activeQuiz.answers);
+            }
+        });        
     }); 
 }
 

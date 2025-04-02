@@ -1,6 +1,43 @@
 const socket = io();
 let teamName = "";
 
+document.addEventListener("DOMContentLoaded", () => {
+    const storedTeam = localStorage.getItem("teamName");
+    if (storedTeam) {
+        // Notify the server that this team is reconnecting
+        socket.emit("rejoinQuiz", storedTeam);
+    }
+});
+
+socket.on("teamRejoined", (data) => {
+    document.getElementById("team-name").innerText = data.teamName;
+    document.getElementById("score").innerText = `Score: ${data.score}`;
+
+    // If there's an active question, display it
+    fetchCurrentQuestion(data.currentQuestion);
+});
+
+function fetchCurrentQuestion(index) {
+    socket.emit("getQuestion", index);
+}
+
+socket.on("questionData", (question) => {
+    displayQuestion(question);
+});
+
+
+
+//check if team name is already in local storage and if it is, remove registration form
+if (localStorage.getItem("teamName")) {
+    console.log('teamName exists in local storage');
+    teamName = localStorage.getItem("teamName");
+    document.getElementById("registration").style.display = "none";
+    document.getElementById("quizArea").style.display = "block";
+    document.title = teamName;
+    document.getElementById("titleContainer").innerText = `Welcome, ${teamName}!`;
+    document.getElementById("titleContainer").style.display = "block";
+}
+
 // Register Team
 document.getElementById("registerTeam").addEventListener("click", () => {
     const input = document.getElementById("teamName");
@@ -14,6 +51,11 @@ document.getElementById("registerTeam").addEventListener("click", () => {
         if (response.success) {
             document.getElementById("registration").style.display = "none";
             document.getElementById("quizArea").style.display = "block";
+            document.title = teamName;
+            document.getElementById("teamNameDisplay").innerText = `Welcome, ${teamName}!`;
+            document.getElementById("teamNameDisplay").style.display = "block";
+            localStorage.setItem("teamName", teamName);
+            
         } else {
             alert("Registration failed. Team name might be taken.");
         }
@@ -34,6 +76,7 @@ document.getElementById("submitAnswer").addEventListener("click", () => {
 // Listen for new questions
 socket.on("newQuestion", (question) => {
     document.getElementById("currentQuestion").innerText = question.questionText;
+    console.log('questions', question);
 
     const mediaContainer = document.getElementById("mediaContainer");
     mediaContainer.innerHTML = ""; // Clear previous media

@@ -8,6 +8,33 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
 
+const fs = require("fs");
+const sessionFile = "./sessionData.json";
+
+// Function to save session data
+function saveSessionData() {
+    const sessionData = {
+        teams,
+        currentQuestionIndex,
+        quizStarted
+    };
+    fs.writeFileSync(sessionFile, JSON.stringify(sessionData, null, 2));
+}
+
+// Function to load session data
+function loadSessionData() {
+    if (fs.existsSync(sessionFile)) {
+        const data = JSON.parse(fs.readFileSync(sessionFile, "utf-8"));
+        teams = data.teams || {};
+        currentQuestionIndex = data.currentQuestionIndex || 0;
+        quizStarted = data.quizStarted || false;
+    }
+}
+
+// Load session data when the server starts
+loadSessionData();
+
+
 app.use(express.static("public"));
 app.use(express.json());
 app.use(fileUpload());
